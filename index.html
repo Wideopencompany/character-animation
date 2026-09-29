@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#121314" />
+    <title>Character Animation</title>
+  </head>
+  <body>
+    <main class="app">
+      <header class="masthead">
+        <div>
+          <p class="eyebrow">Shot Planning / R&amp;D</p>
+          <h1>Character Animation</h1>
+        </div>
+        <p id="status" role="status">Preparing character lab…</p>
+      </header>
+      <section class="stage" aria-label="3D character animation preview">
+        <div id="scene" class="scene"></div>
+        <aside class="clip-panel" aria-label="Animation clips">
+          <p class="panel-label">Action</p>
+          <div id="clip-list" class="clip-list"></div>
+          <p id="clip-note" class="clip-note"></p>
+        </aside>
+      </section>
+      <footer>20 × 20 m stage · character target height 1.8 m · skeleton-driven clips</footer>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
