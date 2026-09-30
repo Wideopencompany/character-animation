@@ -1,4 +1,4 @@
-import { MeshLambertMaterial } from 'three';
+import { MeshLambertMaterial, LinearFilter, LinearMipmapLinearFilter } from 'three';
 
 // Diffuse-only lighting: increasing roughness alone still leaves specular.
 export function makeMatteMaterial(source) {
@@ -36,6 +36,28 @@ export function applyMatteShading(actor) {
     node.receiveShadow = true;
   });
   for (const source of materials.keys()) source.dispose();
+}
+
+// Keep fine cloth detail filtered as it recedes/tilts; MSAA alone does not
+// filter texture minification. Bound anisotropy to avoid unnecessary GPU work.
+export function configureCharacterTextures(actor, maxAnisotropy) {
+  const seen = new Set();
+  actor.traverse((node) => {
+    if (!node.isMesh) return;
+    const materials = Array.isArray(node.material) ? node.material : [node.material];
+    for (const material of materials) {
+      for (const key of ['map', 'normalMap', 'aoMap', 'bumpMap']) {
+        const texture = material[key];
+        if (!texture || seen.has(texture)) continue;
+        seen.add(texture);
+        texture.magFilter = LinearFilter;
+        texture.minFilter = LinearMipmapLinearFilter;
+        texture.generateMipmaps = true;
+        texture.anisotropy = Math.max(1, Math.min(8, maxAnisotropy));
+        texture.needsUpdate = true;
+      }
+    }
+  });
 }
 
 export const AO_SETTINGS = Object.freeze({

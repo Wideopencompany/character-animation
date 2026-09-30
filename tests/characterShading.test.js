@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Group, Mesh, BoxGeometry, MeshStandardMaterial, Texture, Vector2, Scene, PerspectiveCamera, SkinnedMesh, Skeleton, Bone } from 'three';
-import { makeMatteMaterial, applyMatteShading, AO_SETTINGS, aoSize } from '../src/characterShading.js';
+import { Group, Mesh, BoxGeometry, MeshStandardMaterial, Texture, Vector2, Scene, PerspectiveCamera, SkinnedMesh, Skeleton, Bone, LinearFilter, LinearMipmapLinearFilter, NearestFilter } from 'three';
+import { makeMatteMaterial, applyMatteShading, configureCharacterTextures, AO_SETTINGS, aoSize } from '../src/characterShading.js';
 import { LightweightAOPass } from '../src/ambientOcclusion.js';
 
 test('matte material has no specular lighting and retains texture/normal/alpha settings', () => {
@@ -24,6 +24,24 @@ test('matte material has no specular lighting and retains texture/normal/alpha s
   assert.equal(matte.alphaTest, .2);
   assert.equal(matte.emissiveMap, emissiveMap);
   assert.equal(matte.emissiveIntensity, 0);
+});
+
+test('character maps retain their images/UVs with trilinear mip filtering and bounded anisotropy', () => {
+  const image = { width: 2048, height: 2048 };
+  const map = new Texture(image);
+  map.minFilter = NearestFilter;
+  map.generateMipmaps = false;
+  const material = new MeshStandardMaterial({ map, normalMap: map });
+  const actor = new Mesh(new BoxGeometry(), [material, material]);
+  configureCharacterTextures(actor, 16);
+  assert.equal(map.image, image);
+  assert.equal(map.minFilter, LinearMipmapLinearFilter);
+  assert.equal(map.magFilter, LinearFilter);
+  assert.equal(map.generateMipmaps, true);
+  assert.equal(map.anisotropy, 8);
+  assert.equal(map.version, 1);
+  configureCharacterTextures(actor, 4);
+  assert.equal(map.anisotropy, 4);
 });
 
 test('mesh material arrays/shared materials convert without changing bones or geometry', () => {

@@ -5,10 +5,10 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { LightweightAOPass } from './ambientOcclusion.js';
-import { applyMatteShading } from './characterShading.js';
+import { applyMatteShading, configureCharacterTextures } from './characterShading.js';
 import { configureLighting } from './lighting.js';
 import { BASE_SIZE, gridVertices, scaleForHeight } from './baseGrid.js';
-import { CLIPS, findClip, readSelectedClip, saveSelectedClip } from './animationState.js';
+import { CLIPS, findClip, readSelectedClip, saveSelectedClip, availableSelection } from './animationState.js';
 import './styles.css';
 
 const MODEL_URL = new URL('../assets/character/character-animated.glb', import.meta.url).href;
@@ -102,12 +102,15 @@ async function loadCharacter() {
     const scaledBounds = new THREE.Box3().setFromObject(actor);
     actor.position.y -= scaledBounds.min.y;
     applyMatteShading(actor);
+    configureCharacterTextures(actor, renderer.capabilities.getMaxAnisotropy());
     scene.add(actor);
     availableAnimations = gltf.animations;
     mixer = new THREE.AnimationMixer(actor);
     status.textContent = `Character loaded with ${availableAnimations.length} animation clip${availableAnimations.length === 1 ? '' : 's'}.`;
     updateControls();
-    selectClip(selectedKey);
+    const supportedKey = availableSelection(availableAnimations, selectedKey);
+    if (supportedKey) selectClip(supportedKey);
+    else clipNote.textContent = 'This character has no animation clips yet.';
   } catch (error) {
     status.textContent = 'Character asset is still being prepared. The stage is ready for its rigged GLB.';
     clipNote.textContent = 'Animation controls unlock once the rigged GLB is added.';
