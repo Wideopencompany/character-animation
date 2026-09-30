@@ -19,7 +19,7 @@ A public, standalone browser lab lets Nico assess a single stylized, rigged char
 
 ## Data and acceptance
 
-- The generated source model, rigged model, and animated model are recorded as Meshy task metadata but are not committed until their license/retention status is verified.
+- The generated source model, rigged model, and animated model are recorded as Meshy task metadata. Nico authorized the supplied references and final generated asset for this public prototype.
 - `npm test` covers clip selection and saved state.
 - `npm run build` passes.
 - Browser proof covers model load, one clip switch, missing-clip messaging, and selected-clip persistence after reload.
