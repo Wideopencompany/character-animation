@@ -4,6 +4,30 @@ Nico supplied the front and back reference images in this repository and authori
 
 ## Current character — Nico's supplied T-pose
 
+### Local finger repair
+
+Nico requested finger repair after the body rig. Both original hands had fused
+fingers. The current GLB replaces those surfaces with two locally modeled,
+rounded five-digit hands, with three joints per digit (30 added, 54 total).
+The original 24 body joint transforms, inverse bind matrices, all three clip
+channels and source binary bytes remain preserved. Only distal hand / sampled
+wrist-skin triangles are removed from the original mesh's visible index list.
+Face, body, clothing UVs and texture images are unchanged.
+
+Hand geometry is finished via Blender voxel union, smoothing and reduction;
+`hand-geometry.json` preserves the accepted result. `hand-skin-mask.json` classifies
+wrist skin from the original atlas so clothing is not removed along with it.
+Hand material color uses median original hand base-color texels. New wrists
+blend ForeArm/Hand skin weights to follow existing cuffs during Walk/Run.
+
+Reproduce current GLB: `npm run build:character`. Input source rig and clips
+remain immutable; repair scripts reject invalid hand-only geometry, masks and
+weights. Current asset has 206,751 visible triangles, 21.7 MB. No Meshy costs.
+Independent finger bending is verified in a local diagnostic, but no new
+gesture/finger animation clips or UI controls are added in this repair.
+
+### Meshy body rig preceding finger repair
+
 Nico supplied `Meshy_AI_Cozy_Redhead_Characte_0930014355_texture.glb` and
 approved remesh + rig for 10 Meshy credits. This replaces the generated character
 below; it is not a newly generated interpretation of the reference images.
@@ -27,8 +51,9 @@ below; it is not a newly generated interpretation of the reference images.
 - Runtime retains diffuse-only shading, zero emission and inexpensive AO.
   Trilinear mipmaps / anisotropy capped at 8 reduce texture minification aliasing;
   they do not remove artifacts already present in the source texture.
-- This is a body rig: LeftHand/RightHand exist, but no individual finger bones
-  or facial controls. Walk/run play in place; grid navigation is not implemented.
+- The Meshy output itself is a body rig with no individual finger bones or
+  facial controls. The local repair above adds finger joints. Walk/run still
+  play in place; grid navigation is not implemented.
 - Balance verified after completion: 1,706 (previously 1,716). No retexture,
   new generation, or paid custom animation was performed in this replacement.
 
