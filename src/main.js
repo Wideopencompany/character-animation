@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { LightweightAOPass } from './ambientOcclusion.js';
+import { applyMatteShading } from './characterShading.js';
 import { BASE_SIZE, gridVertices, scaleForHeight } from './baseGrid.js';
 import { CLIPS, findClip, readSelectedClip, saveSelectedClip } from './animationState.js';
 import './styles.css';
@@ -18,13 +23,20 @@ const buttons = new Map();
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 container.append(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x17191a);
+// Compensate the stage palette for the highlight-preserving ACES output.
+scene.background = new THREE.Color(0x35383a);
 const camera = new THREE.PerspectiveCamera(36, 1, .1, 120);
+const renderTarget = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
+const composer = new EffectComposer(renderer, renderTarget);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(new LightweightAOPass(scene, camera));
+composer.addPass(new OutputPass());
 camera.position.set(5.8, 4.1, 7.6);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, .9, 0);
@@ -38,7 +50,7 @@ const keyLight = new THREE.DirectionalLight(0xfff0df, 2.7);
 keyLight.position.set(7, 12, 9);
 keyLight.castShadow = true;
 scene.add(keyLight);
-const floor = new THREE.Mesh(new THREE.BoxGeometry(BASE_SIZE, .18, BASE_SIZE), new THREE.MeshStandardMaterial({ color: 0x252829, roughness: .96 }));
+const floor = new THREE.Mesh(new THREE.BoxGeometry(BASE_SIZE, .18, BASE_SIZE), new THREE.MeshLambertMaterial({ color: 0x444849 }));
 floor.position.y = -.09;
 floor.receiveShadow = true;
 scene.add(floor);
@@ -93,7 +105,7 @@ async function loadCharacter() {
     actor.updateMatrixWorld(true);
     const scaledBounds = new THREE.Box3().setFromObject(actor);
     actor.position.y -= scaledBounds.min.y;
-    actor.traverse((node) => { if (node.isMesh) { node.castShadow = true; node.receiveShadow = true; } });
+    applyMatteShading(actor);
     scene.add(actor);
     availableAnimations = gltf.animations;
     mixer = new THREE.AnimationMixer(actor);
@@ -113,14 +125,17 @@ function resize() {
   renderer.setSize(width, height, false);
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
+  composer.setSize(width, height);
 }
 
-const clock = new THREE.Clock();
-function frame() {
+const timer = new THREE.Timer();
+timer.connect(document);
+function frame(timestamp) {
   requestAnimationFrame(frame);
-  mixer?.update(clock.getDelta());
+  timer.update(timestamp);
+  mixer?.update(timer.getDelta());
   controls.update();
-  renderer.render(scene, camera);
+  composer.render();
 }
 
 renderClipControls();
