@@ -20,11 +20,22 @@ wrist skin from the original atlas so clothing is not removed along with it.
 Hand material color uses median original hand base-color texels. New wrists
 blend ForeArm/Hand skin weights to follow existing cuffs during Walk/Run.
 
+Second hand revision responds to Nico's report that the first repair was not
+visibly convincing. Narrower rounded palm, thumb mound, varied knuckle line,
+tapered finger lengths, relaxed arc and subtle matte nail/knuckle vertex colors
+replace the first flat comb-like silhouette. Hand geometry: 19,284 triangles.
+Total: 202,421 visible triangles; original body/face/cloth data remain unchanged.
+
 Reproduce current GLB: `npm run build:character`. Input source rig and clips
 remain immutable; repair scripts reject invalid hand-only geometry, masks and
-weights. Current asset has 206,751 visible triangles, 21.7 MB. No Meshy costs.
-Independent finger bending is verified in a local diagnostic, but no new
-gesture/finger animation clips or UI controls are added in this repair.
+weights. No Meshy costs. `scripts/add-hand-flex.mjs` appends a real five-second
+`Hand flex` clip with 30 nonconstant finger rotation channels and original
+constant body rest channels, preserving the original three clips byte-for-byte.
+Selecting Hand flex automatically frames the left hand; orbit/close zoom now
+allow inspection. Selection and close-up framing work after reload. Switching
+back to Rest/Walk/Run restores full-body framing and finger rest transforms.
+This is a stylized hand-flex inspection action, not a restored Conversation.
+Idle, Conversation and Sit remain missing from this character.
 
 ### Meshy body rig preceding finger repair
 

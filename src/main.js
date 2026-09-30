@@ -20,6 +20,8 @@ let selectedKey = readSelectedClip(window.localStorage);
 let mixer;
 let activeAction;
 let availableAnimations = [];
+let actor;
+let inspectingHands = false;
 const buttons = new Map();
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -41,7 +43,7 @@ camera.position.set(5.8, 4.1, 7.6);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.target.set(0, .9, 0);
 controls.enableDamping = true;
-controls.minDistance = 5;
+controls.minDistance = .22;
 controls.maxDistance = 36;
 controls.maxPolarAngle = Math.PI / 2.04;
 
@@ -85,16 +87,34 @@ function selectClip(key) {
     clipNote.textContent = `${descriptor.label} is not included in this character yet.`;
     return;
   }
-  const nextAction = mixer.clipAction(animation).reset().fadeIn(.2).play();
+  if (key === 'hands') mixer.stopAllAction();
+  const nextAction = mixer.clipAction(animation).reset().fadeIn(key === 'hands' ? 0 : .2).play();
   if (activeAction && activeAction !== nextAction) activeAction.fadeOut(.2);
   activeAction = nextAction;
+  if (key === 'hands') {
+    mixer.update(0);
+    actor.updateMatrixWorld(true);
+    const hand = actor.getObjectByName('LeftMiddle1');
+    if (hand) {
+      const center = hand.getWorldPosition(new THREE.Vector3()).add(new THREE.Vector3(-.015, 0, 0));
+      controls.target.copy(center);
+      camera.position.copy(center).add(new THREE.Vector3(.018, .25, .23).multiplyScalar(Math.max(1, 1.5 / camera.aspect)));
+      controls.update();
+    }
+    inspectingHands = true;
+  } else if (inspectingHands) {
+    controls.target.set(0, .9, 0);
+    camera.position.set(0, 1.5, 3.8);
+    controls.update();
+    inspectingHands = false;
+  }
   clipNote.textContent = `Playing ${animation.name}.`;
 }
 
 async function loadCharacter() {
   try {
     const gltf = await new GLTFLoader().loadAsync(MODEL_URL);
-    const actor = gltf.scene;
+    actor = gltf.scene;
     const bounds = new THREE.Box3().setFromObject(actor);
     const height = bounds.max.y - bounds.min.y;
     actor.scale.setScalar(scaleForHeight(height));

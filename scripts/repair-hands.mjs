@@ -96,21 +96,28 @@ export function repairHands(source, smoothedGeometry, skinMask) {
     }
   };
   const digitDefinitions = [
-    { name: 'Thumb', x: .665, z: .024, length: .075, dz: .045, radius: .0105 },
-    { name: 'Index', x: .711, z: .025, length: .088, dz: .006, radius: .0085 },
-    { name: 'Middle', x: .713, z: .003, length: .098, dz: 0, radius: .009 },
-    { name: 'Ring', x: .711, z: -.019, length: .091, dz: -.002, radius: .0085 },
-    { name: 'Little', x: .701, z: -.038, length: .073, dz: -.006, radius: .007 },
+    { name: 'Thumb', x: .660, z: .021, length: .062, dz: .047, radius: .0115 },
+    { name: 'Index', x: .703, z: .025, length: .082, dz: .003, radius: .0085 },
+    { name: 'Middle', x: .710, z: .004, length: .091, dz: 0, radius: .009 },
+    { name: 'Ring', x: .703, z: -.017, length: .085, dz: -.002, radius: .008 },
+    { name: 'Little', x: .687, z: -.035, length: .066, dz: -.007, radius: .0065 },
   ];
   for (const [side, prefix] of [[1, 'Left'], [-1, 'Right']]) {
     const handNode = json.nodes.findIndex(n => n.name === `${prefix}Hand`);
     const handJoint = skin.joints.indexOf(handNode), handWorld = world(handNode);
     const y = 1.375;
-    const palmCenters = [.619, .639, .65, .674, .70, .718].map(x => point(side, x, y, -.003));
-    loft(palmCenters, [[.026, .048], [.027, .048], [.026, .048], [.017, .040], [.015, .042], [.010, .037]], 24,
+    const palmCenters = [.619, .638, .653, .673, .686, .696, .708].map(x => point(side, x, y, -.004));
+    loft(palmCenters, [[.022, .034], [.022, .034], [.020, .032], [.017, .036], [.015, .037], [.012, .026], [.006, .009]], 32,
+      () => ({ joints: [handJoint], weights: [1] }));
+    // Fleshy thumb mound, continuous with the palm rather than a fifth tube
+    // attached to the same knuckle line as the four fingers.
+    loft([.647, .660, .677, .692].map((x, i) => point(side, x, y - .005, .017 + i * .003)),
+      [[.009, .012], [.014, .016], [.015, .017], [.005, .008]], 24,
       () => ({ joints: [handJoint], weights: [1] }));
     for (const digit of digitDefinitions) {
-      const centerAt = t => point(side, digit.x + digit.length * t, y - .012 * t * t, digit.z + digit.dz * t);
+      // Soft relaxed arc and a curved knuckle line, not a flat comb silhouette.
+      const centerAt = t => point(side, digit.x + digit.length * t,
+        y - (digit.name === 'Thumb' ? .018 : .024) * t * t, digit.z + digit.dz * t);
       const fractions = [0, .42, .72], joints = []; let parent = handNode, parentWorld = handWorld;
       for (let joint = 0; joint < 3; joint++) {
         const desired = new Matrix4().compose(centerAt(fractions[joint]), new Quaternion(), new Vector3(.01, .01, .01));
@@ -123,13 +130,21 @@ export function repairHands(source, smoothedGeometry, skinMask) {
         bindMatrices.push(...desired.clone().invert().elements);
         parent = index; parentWorld = desired;
       }
-      const centers = Array.from({ length: 21 }, (_, i) => centerAt(i / 20));
+      // Extend the proximal finger roots inside the palm. The palm's rounded
+      // distal edge can then follow the varied knuckle line instead of ending
+      // in one broad straight cap that hides all the different finger roots.
+      const sections = Array.from({ length: 39 }, (_, i) => (i - 6) / 32);
+      const centers = sections.map(centerAt);
       const radii = centers.map((_, i) => {
-        const t = i / 20, taper = 1 - .22 * t;
-        const cap = t > .9 ? Math.sqrt(Math.max(.015, 1 - ((t - .9) / .1) ** 2)) : 1;
-        return [digit.radius * taper * cap * .88, digit.radius * taper * cap];
+        const t = sections[i];
+        const knuckle = 1 + .09 * Math.exp(-(((t - .42) / .065) ** 2)) + .06 * Math.exp(-(((t - .72) / .055) ** 2));
+        const taper = (1 - .26 * t) * knuckle;
+        const cap = t > .87 ? Math.sqrt(Math.max(.005, 1 - ((t - .87) / .13) ** 2)) : 1;
+        return [digit.radius * taper * cap * .82, digit.radius * taper * cap];
       });
-      loft(centers, radii, 16, t => {
+      loft(centers, radii, 24, rowFraction => {
+        const t = -.1875 + rowFraction * 1.1875;
+        if (t < 0) return { joints: [handJoint], weights: [1] };
         if (t < .06) return { joints: [handJoint, joints[0]], weights: [1 - t / .06, t / .06] };
         if (t < .28) return { joints: [joints[0]], weights: [1] };
         if (t < .50) return { joints: [joints[0], joints[1]], weights: [1 - (t - .28) / .22, (t - .28) / .22] };
@@ -163,14 +178,35 @@ export function repairHands(source, smoothedGeometry, skinMask) {
   // Median base-color texels sampled from both original hands, converted from
   // sRGB into the linear glTF material factor; no changes to face/body textures.
   const color = new Color().setRGB(.862745, .670588, .580392, SRGBColorSpace);
+  const nailColor = new Color().setRGB(.91, .775, .71, SRGBColorSpace);
+  const colors = [];
+  // Subtle matte nail beds and knuckle tint add readable anatomy without
+  // adding texture noise, specular or another surface to intersect the skin.
+  for (let v = 0; v < count; v++) {
+    const x = Math.abs(data.position[v * 3]), y = data.position[v * 3 + 1], z = data.position[v * 3 + 2];
+    let nail = 0, crease = 0;
+    for (const d of digitDefinitions) {
+      const t = (x - d.x) / d.length;
+      if (t < .1 || t > 1 || data.normal[v * 3 + 1] < .25) continue;
+      const centerZ = d.z + d.dz * t;
+      const centerY = 1.375 - (d.name === 'Thumb' ? .018 : .024) * t * t;
+      if (y < centerY + .002) continue;
+      const ellipse = ((t - .82) * d.length / .009) ** 2 + ((z - centerZ) / (d.radius * .60)) ** 2;
+      nail = Math.max(nail, Math.max(0, Math.min(1, (1 - ellipse) / .24)));
+      if (Math.abs(z - centerZ) < d.radius * .65) crease = Math.max(crease,
+        .05 * Math.exp(-(((t - .42) / .022) ** 2)), .03 * Math.exp(-(((t - .72) / .018) ** 2)));
+    }
+    colors.push(...color.clone().multiplyScalar(1 - crease).lerp(nailColor, nail).toArray());
+  }
   const material = json.materials.length;
   json.materials.push({ name: 'Repaired hands skin', doubleSided: true,
-    pbrMetallicRoughness: { baseColorFactor: [...color.toArray(), 1], metallicFactor: 0, roughnessFactor: 1 } });
+    pbrMetallicRoughness: { baseColorFactor: [1, 1, 1, 1], metallicFactor: 0, roughnessFactor: 1 } });
   const mesh = json.meshes.length;
   json.meshes.push({ name: 'Repaired five-digit hands', primitives: [{
     attributes: {
       POSITION: append(new Float32Array(data.position), 'VEC3', 5126, 34962),
       NORMAL: append(new Float32Array(data.normal), 'VEC3', 5126, 34962),
+      COLOR_0: append(new Float32Array(colors), 'VEC3', 5126, 34962),
       JOINTS_0: append(new Uint16Array(data.joints), 'VEC4', 5123, 34962),
       WEIGHTS_0: append(new Float32Array(data.weights), 'VEC4', 5126, 34962),
     }, indices: append(new Uint32Array(data.indices), 'SCALAR', 5125, 34963), material,
@@ -178,7 +214,7 @@ export function repairHands(source, smoothedGeometry, skinMask) {
   const originalMeshNode = json.nodes.findIndex(n => n.mesh === 0), node = json.nodes.length;
   json.nodes.push({ ...structuredClone(json.nodes[originalMeshNode]), name: 'Repaired hands', mesh });
   json.nodes[parents.get(originalMeshNode)].children.push(node);
-  json.extras = { ...json.extras, handRepair: { version: 1, originalBodyJoints: 24, fingerJoints: 30,
+  json.extras = { ...json.extras, handRepair: { version: 2, originalBodyJoints: 24, fingerJoints: 30,
     removedTriangles: removed.length / 3, addedTriangles: data.indices.length / 3, cut: HAND_CUT,
     skinMaskMinX: skinMask?.minX, smoothed: !!smoothedGeometry } };
   return { json, bin: Buffer.concat(parts) };

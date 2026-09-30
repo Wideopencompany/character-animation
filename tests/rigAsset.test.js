@@ -40,12 +40,12 @@ test('deployed character is the approved rig with supported clips and vertex ski
   const { json } = readGLB(new URL('../assets/character/character-animated.glb', import.meta.url));
   const primitives = json.meshes.flatMap((mesh) => mesh.primitives);
   const count = primitives.reduce((n, primitive) => n + json.accessors[primitive.indices].count / 3, 0);
-  assert.equal(count, 206751);
+  assert.equal(count, 190211 - json.extras.handRepair.removedTriangles + json.extras.handRepair.addedTriangles);
   assert.ok(count <= 300000);
   assert.equal(json.skins[0].joints.length, 54);
   for (const primitive of primitives) {
     assert.ok(primitive.attributes.JOINTS_0 !== undefined);
     assert.ok(primitive.attributes.WEIGHTS_0 !== undefined);
   }
-  assert.deepEqual(json.animations.map((clip) => clip.name), ['Rest pose', 'Walking', 'Running']);
+  assert.deepEqual(json.animations.map((clip) => clip.name), ['Rest pose', 'Walking', 'Running', 'Hand flex']);
 });

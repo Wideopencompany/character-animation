@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { Matrix4, Vector3, Quaternion } from 'three';
 import { readGLB, combineRigClips, encodeGLB } from '../scripts/combine-rig-clips.mjs';
 import { repairHands, readAccessor, DIGITS, HAND_CUT } from '../scripts/repair-hands.mjs';
+import { addHandFlex } from '../scripts/add-hand-flex.mjs';
 const asset = name => new URL(`../assets/character/${name}`, import.meta.url);
 const body = combineRigClips(readGLB(asset('user-rigged.glb')), [
   { name: 'Walking', document: readGLB(asset('clips/walking.glb')) },
@@ -21,7 +22,7 @@ test('hand repair preserves source bytes, face/body attributes, textures and all
     for (const key of ['translation', 'rotation', 'scale', 'matrix']) assert.deepEqual(result.json.nodes[i][key], node[key]);
   });
   assert.deepEqual(readAccessor(result, result.json.skins[0].inverseBindMatrices).slice(0, 24), readAccessor(body, body.json.skins[0].inverseBindMatrices));
-  assert.ok(encodeGLB(result).equals(readFileSync(asset('character-animated.glb'))));
+  assert.ok(encodeGLB(addHandFlex(result)).equals(readFileSync(asset('character-animated.glb'))));
 });
 
 test('ten digits have three real joints each, with valid local normalized hand skin weights', () => {
@@ -37,6 +38,16 @@ test('ten digits have three real joints each, with valid local normalized hand s
   for (let v = 0; v < geometry.weights.length; v += 4) assert.ok(Math.abs(geometry.weights.slice(v, v + 4).reduce((a, b) => a + b, 0) - 1) < 1e-5);
 });
 
+test('hand-only matte vertex colors add subtle surface variation without changing source texture images', () => {
+  const p = result.json.meshes[1].primitives[0];
+  const colors = readAccessor(result, p.attributes.COLOR_0);
+  assert.equal(colors.length, geometry.position.length / 3);
+  assert.ok(colors.every(c => c.every(v => Number.isFinite(v) && v >= 0 && v <= 1)));
+  assert.ok(new Set(colors.map(c => c.map(v => v.toFixed(4)).join(','))).size > 100);
+  assert.deepEqual(result.json.images, body.json.images);
+  assert.equal(result.json.materials[p.material].pbrMetallicRoughness.roughnessFactor, 1);
+});
+
 test('only distal hand and atlas-classified wrist skin triangles are removed, never head/body or cuff fabric', () => {
   const p = body.json.meshes[0].primitives[0], positions = readAccessor(body, p.attributes.POSITION);
   const old = readAccessor(body, p.indices).flat(), maskIds = new Set(mask.vertices);
@@ -50,7 +61,8 @@ test('only distal hand and atlas-classified wrist skin triangles are removed, ne
   }
   assert.deepEqual(readAccessor(result, result.json.meshes[0].primitives[0].indices).flat(), expected);
   assert.equal(result.json.extras.handRepair.removedTriangles, 7074);
-  assert.equal(result.json.extras.handRepair.addedTriangles, 23614);
+  assert.equal(result.json.extras.handRepair.addedTriangles, geometry.indices.length / 3);
+  assert.ok(geometry.indices.length / 3 < 25000);
 });
 
 test('index joints deform their own hand only and preserve valid rest skin positions', () => {

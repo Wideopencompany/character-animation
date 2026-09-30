@@ -2,6 +2,7 @@ export const CLIP_STORAGE_KEY = 'character-animation-selected-clip-v1';
 
 export const CLIPS = [
   { key: 'pose', label: 'Rest pose', matcher: /^Rest pose$/i },
+  { key: 'hands', label: 'Hand flex', matcher: /^Hand flex$/i },
   { key: 'idle', label: 'Idle', matcher: /idle/i },
   { key: 'walk', label: 'Walk', matcher: /walk/i },
   { key: 'run', label: 'Run', matcher: /run/i },

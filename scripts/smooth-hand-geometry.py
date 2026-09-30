@@ -23,11 +23,11 @@ indices=[v[0] for v in values(p['indices'])];faces=[indices[i:i+3] for i in rang
 mesh=bpy.data.meshes.new('Replacement hands only');mesh.from_pydata(positions,[],faces);mesh.update()
 obj=bpy.data.objects.new('Replacement hands only',mesh);bpy.context.collection.objects.link(obj)
 bpy.context.view_layer.objects.active=obj;obj.select_set(True)
-mesh.remesh_voxel_size=.00125;mesh.use_remesh_preserve_volume=True
+mesh.remesh_voxel_size=.001;mesh.use_remesh_preserve_volume=True
 bpy.ops.object.voxel_remesh()
-modifier=obj.modifiers.new('Finish palm and finger unions','SMOOTH');modifier.factor=.8;modifier.iterations=12
+modifier=obj.modifiers.new('Finish palm and finger unions','SMOOTH');modifier.factor=.65;modifier.iterations=8
 bpy.ops.object.modifier_apply(modifier=modifier.name)
-modifier=obj.modifiers.new('Keep hands economical','DECIMATE');modifier.ratio=.16
+modifier=obj.modifiers.new('Keep hands economical','DECIMATE');modifier.ratio=.10
 bpy.ops.object.modifier_apply(modifier=modifier.name)
 obj.data.update();tree=KDTree(len(positions))
 for i,p in enumerate(positions):tree.insert(p,i)
