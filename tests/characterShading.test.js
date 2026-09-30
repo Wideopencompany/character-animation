@@ -7,7 +7,9 @@ import { LightweightAOPass } from '../src/ambientOcclusion.js';
 test('matte material has no specular lighting and retains texture/normal/alpha settings', () => {
   const map = new Texture();
   const normalMap = new Texture();
+  const emissiveMap = new Texture();
   const source = new MeshStandardMaterial({ color: 0xc87e49, map, normalMap,
+    emissive: 0xffffff, emissiveMap, emissiveIntensity: 1,
     normalScale: new Vector2(.7, -.7), transparent: true, opacity: .8, alphaTest: .2 });
   const matte = makeMatteMaterial(source);
   assert.equal(matte.isMeshLambertMaterial, true);
@@ -20,6 +22,8 @@ test('matte material has no specular lighting and retains texture/normal/alpha s
   assert.equal(matte.color.getHex(), source.color.getHex());
   assert.equal(matte.opacity, .8);
   assert.equal(matte.alphaTest, .2);
+  assert.equal(matte.emissiveMap, emissiveMap);
+  assert.equal(matte.emissiveIntensity, 0);
 });
 
 test('mesh material arrays/shared materials convert without changing bones or geometry', () => {

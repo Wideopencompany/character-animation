@@ -15,6 +15,10 @@ export function makeMatteMaterial(source) {
     if (matte[key]?.copy) matte[key].copy(source[key]);
     else matte[key] = source[key];
   }
+  // Meshy's human asset contains an emissive texture at full strength. It adds
+  // its color regardless of light, washing out cream/skin even at low exposure.
+  // Keep the texture data, but this character is not a light-emitting object.
+  matte.emissiveIntensity = 0;
   return matte;
 }
 

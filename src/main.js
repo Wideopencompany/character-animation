@@ -6,6 +6,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { LightweightAOPass } from './ambientOcclusion.js';
 import { applyMatteShading } from './characterShading.js';
+import { configureLighting } from './lighting.js';
 import { BASE_SIZE, gridVertices, scaleForHeight } from './baseGrid.js';
 import { CLIPS, findClip, readSelectedClip, saveSelectedClip } from './animationState.js';
 import './styles.css';
@@ -23,7 +24,6 @@ const buttons = new Map();
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 container.append(renderer.domElement);
@@ -45,11 +45,7 @@ controls.minDistance = 5;
 controls.maxDistance = 36;
 controls.maxPolarAngle = Math.PI / 2.04;
 
-scene.add(new THREE.HemisphereLight(0xd8e2e4, 0x202223, 2.2));
-const keyLight = new THREE.DirectionalLight(0xfff0df, 2.7);
-keyLight.position.set(7, 12, 9);
-keyLight.castShadow = true;
-scene.add(keyLight);
+configureLighting(renderer, scene);
 const floor = new THREE.Mesh(new THREE.BoxGeometry(BASE_SIZE, .18, BASE_SIZE), new THREE.MeshLambertMaterial({ color: 0x444849 }));
 floor.position.y = -.09;
 floor.receiveShadow = true;
