@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ACESFilmicToneMapping, Scene } from 'three';
-import { configureLighting, LIGHTING } from '../src/lighting.js';
+import { configureLighting, LIGHTING, CHARACTER_SHADOW } from '../src/lighting.js';
 
 test('diffuse lighting keeps exposure/fill/key calibrated instead of washing out the character', () => {
   const renderer = {};
@@ -16,4 +16,17 @@ test('diffuse lighting keeps exposure/fill/key calibrated instead of washing out
   assert.deepEqual(key.position.toArray(), [7, 12, 9]);
   assert.equal(key.castShadow, true);
   assert.deepEqual(scene.children, [fill, key]);
+});
+
+test('body shadows use bounded depth precision and nonzero bias to prevent face banding', () => {
+  const { key } = configureLighting({}, new Scene());
+  assert.equal(key.shadow.bias, -.0001);
+  assert.equal(key.shadow.normalBias, .02);
+  assert.deepEqual(key.shadow.mapSize.toArray(), [1024, 1024]);
+  const camera = key.shadow.camera;
+  assert.deepEqual([camera.left, camera.right, camera.bottom, camera.top], [-3, 3, -3, 3]);
+  assert.equal(camera.near, .5);
+  assert.equal(camera.far, 40);
+  assert.ok(camera.far > key.position.length() + 3);
+  assert.ok(CHARACTER_SHADOW.normalBias < .03, 'avoid large detached contact shadows');
 });
